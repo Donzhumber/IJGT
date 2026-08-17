@@ -1,0 +1,498 @@
+% !TEX program = pdflatex
+% !TEX root = Appendix_C_Streamlit.tex
+% =========================================================================
+% APPENDIX C -- TECHNICAL DOCUMENTATION OF SIMULATION ENGINE (app_DL.py)
+% Standard article supplement format.
+% Technical documentation of the Deep Learning Value Net and Simulation Engine.
+% =========================================================================
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage[round]{natbib}
+\usepackage{amsmath,amssymb,mathtools,amsthm}
+\providecommand{\doi}[1]{\href{https://doi.org/#1}{doi:\detokenize{#1}}}
+\doublespacing
+
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{ragged2e}
+\usepackage{longtable}
+\RequirePackage[colorlinks,citecolor=blue,linkcolor=blue,urlcolor=blue,pagebackref]{hyperref}
+\urlstyle{same}
+
+\usepackage{xcolor}
+\usepackage{listings}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.94}
+
+\lstdefinestyle{pystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=6pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Python
+}
+\lstset{style=pystyle}
+
+\newcommand{\pyfile}[1]{\texttt{#1}}
+\newcommand{\pyvar}[1]{\texttt{#1}}
+
+\numberwithin{equation}{section}
+\numberwithin{table}{section}
+
+\renewcommand{\thesection}{S\arabic{section}}
+% Compact AMS-style labels: S{sec}.{sub}.{subsub}.{para}; 0 if level unused
+\makeatletter
+\newcommand{\@appzero}[1]{\ifnum\value{#1}=0 0\else\arabic{#1}\fi}
+\newcommand{\@appsec}{S\arabic{section}}
+\newcommand{\@appsub}{\@appzero{subsection}}
+\newcommand{\@appsubsub}{\@appzero{subsubsection}}
+\renewcommand{\thesubsection}{\@appsec.\@appsub.0.0}
+\renewcommand{\thesubsubsection}{\@appsec.\@appsub.\@appsubsub.0}
+\renewcommand{\theparagraph}{\@appsec.\@appsub.\@appsubsub.\arabic{paragraph}}
+\setcounter{secnumdepth}{4}
+\@addtoreset{subsection}{section}
+\@addtoreset{subsubsection}{subsection}
+\@addtoreset{paragraph}{section}
+
+% Prevent word hyphenation in section, subsection, and subsubsection titles
+\renewcommand\section{\@startsection {section}{1}{\z@}%
+                                   {-3.5ex \@plus -1ex \@minus -.2ex}%
+                                   {2.3ex \@plus.2ex}%
+                                   {\normalfont\Large\bfseries\raggedright}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+                                     {-3.25ex\@plus -1ex \@minus -.2ex}%
+                                     {1.5ex \@plus .2ex}%
+                                     {\normalfont\large\bfseries\raggedright}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}%
+                                     {-3.25ex\@plus -1ex \@minus -.2ex}%
+                                     {1.5ex \@plus .2ex}%
+                                     {\normalfont\normalsize\bfseries\raggedright}}
+\makeatother
+
+\begin{document}
+
+\title{Supplement to ``Identifying Rational Types in Unknown Environments''\\
+Appendix C: Technical Documentation of app\_DL.py and Value Net Approximators}
+\author{}
+\date{\today}
+\maketitle
+
+\begin{abstract}
+\singlespacing
+This supplement provides the complete technical documentation of the simulation engine implemented in \pyfile{app\_DL.py} and details the deep-learning-based value approximation framework described in Section 5 of the main text. It covers the file architecture and data inputs, the training scheme of the value networks, the state's dynamic optimization oracle, the simulation loop, and the assembly of the results reported in the paper.
+\end{abstract}
+
+% =====================================================================
+\section{Introduction}
+% =====================================================================
+
+The live execution of the Streamlit application \pyfile{app\_DL.py} is hosted at:\\
+\url{https://y5ss6jtuccvpbdvuy7kdgl.streamlit.app/}\\
+where a dedicated ``Readme'' tab provides user instructions. Alternatively, the application can be run locally on both macOS and Windows systems using double-clickable launcher shortcuts; instructions for local setups are detailed in the \texttt{README.md} file in the root of the application folder. The complete research repository, including code, simulation files, and data calibration scripts, is available at the public GitHub repository:\\
+\url{https://github.com/Donzhumber/JET.git}\\
+This document outlines the application design.
+
+Solving the dynamic mechanism's backward induction recursively is computationally prohibitive due to the need to recalculate expected continuation values. To resolve this, the model employs a value approximator based on a Multilayer Perceptron (MLP), trained in two independent instances: one approximating the continuation value that feeds the state's optimization (\pyfile{captor\_value\_net\_T10.pt}), and the other approximating the kidnapper's optimal response under its true type (\pyfile{captor\_true\_type\_value\_net\_T10.pt}).
+
+This supplement details: (i) the file architecture and data inputs, (ii) the neural network configuration and the offline backward induction training scheme, (iii) the state's grid-search optimization oracle, including the dynamic belief-weighted anchoring penalty and active learning entropy subsidy, (iv) the fallback mechanism for empty feasible sets, (v) the step-by-step Bayesian simulation loop, and (vi) the assembly of the transposed Table 5.2.
+
+% =====================================================================
+\section{File Architecture}
+% =====================================================================
+
+The simulation engine and deep learning models are implemented in Python. The files and their roles are summarized below:
+
+\begin{center}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}l X l@{}}
+\toprule
+\textbf{File} & \textbf{Role} & \textbf{Status} \\
+\midrule
+\pyfile{app\_DL.py} & Streamlit application front-end; coordinates parameters, runs the simulation loop, and displays outputs and diagnostics. & Main entry point \\
+\pyfile{train\_captor\_value\_net.py} & Defines the \pyvar{CaptorValueNet} network architecture, features, and the \pyvar{solve\_state\_problem} grid-search oracle. Handles value net training. & Imported by \pyfile{app\_DL.py} \\
+\pyfile{train\_captor\_true\_type\_net.py} & Implements the captor's true-type value network training under true-type hazards. & Imported by \pyfile{app\_DL.py} \\
+\pyfile{family\_optimization.py} & Contains optimization functions for the family's best response. & Imported by \pyfile{app\_DL.py} \\
+\pyfile{run\_period.py} & Standard game loop period-to-period simulation runner. & Imported by \pyfile{app\_DL.py} \\
+\pyfile{rational\_behavior.py} & Core library containing utilities for outcomes, hazards, and payoffs. & Imported by \pyfile{app\_DL.py} \\
+\bottomrule
+\end{tabularx}
+\normalsize
+\end{center}
+
+All deep learning operations are conducted using PyTorch, and simulation computations are written in vector-accelerated NumPy.
+
+% =====================================================================
+\section{Data Inputs and Prior Initialization}
+% =====================================================================
+
+All calibration scenarios represent synthetic environments where the user configures the initial prior distribution $\mu_0$ over the four captor types: common delinquency (\text{DC}), paramilitary groups (\text{PAR}), the National Liberation Army (\text{ELN}), and the Revolutionary Armed Forces of Colombia (\text{FARC}).
+
+\subsection{Prior Initialization}
+In the application, the user sets the initial prior vector $\mu_0 \in \Delta(\Theta_K)$ using manual sliders for $\mu_0(\text{DC})$, $\mu_0(\text{PAR})$, and $\mu_0(\text{ELN})$. The prior for $\mu_0(\text{FARC})$ is then computed automatically to satisfy the normalization constraint:
+\begin{equation}
+\mu_0(\text{FARC}) = 1.0 - \sum_{\theta \in \{\text{DC},\,\text{PAR},\,\text{ELN}\}} \mu_0(\theta)
+\end{equation}
+This allows setting the exact scenarios analyzed in the calibration sections of the paper, such as:
+\begin{itemize}
+    \item \textbf{ELN Baseline Prior Scenario}: $\mu_0 = (0.25, 0.35, 0.05, 0.35)$
+    \item \textbf{PAR Baseline Prior Scenario}: $\mu_0 = (0.55, 0.05, 0.35, 0.05)$
+\end{itemize}
+
+\subsection{Covariates and Environmental Inputs}
+The interface allows the user to select the following qualitative covariates to configure the environment's empirical hazard levels and structural responses:
+\begin{enumerate}
+    \item \textbf{Perpetrator Group ($\theta_K$)}: Selects FARC, ELN, PAR, or DC to index baseline technology hazards $\beta_{K,j}$.
+    \item \textbf{Geographic Zone ($z$)}: Selects Metropolis, Andean, Caribbean, Pacific / Red Zone, or Eastern Plains/Jungle to index the geographical parameters $\beta_z$, where: Metropolis $= 0.00$, Andean $= -0.45$, Caribbean $= -0.70$, Pacific/Red Zone $= -0.20$, and Eastern Plains/Jungle $= -0.32$.
+    \item \textbf{Victim Profile ($\theta_V$)}: Selects Private or Public sector. A public sector victim subtracts $\beta_{V,1} = 1.36$ from the payment hazard rate index.
+    \item \textbf{Family Wealth ($\theta_F$)}: Selects Standard or High wealth class. A high-wealth family adds $\beta_{F,1} = 0.80$ to the payment hazard rate index.
+    \item \textbf{State Type ($\theta_S$)}: Selects Strict or Lax. A lax state adds $\beta_{S,1} = 0.50$ and $\beta_{S,2} = 0.50$ to the payment and death hazard indices respectively.
+\end{enumerate}
+
+\subsection{Structural Hyperparameters}
+The interface allows adjusting structural parameters such as the time horizon ($T_{\text{horizon}}$), active exploration weight ($\psi_H$), and minimum MDG temperature ($\underline{c}$), alongside calibration parameters for $\alpha_0$, $\gamma_0$, $T_{\text{mad}}$, $\lambda_4$, and $\eta_{\text{cal}}$, which parameterize the environment's hazards and temperature decay.
+
+% =====================================================================
+\section{Deep Learning Value Network Architecture}
+% =====================================================================
+
+The computational cost of solving the game's backward induction is dominated by the recursive estimation of the kidnapper's expected continuation value. To avoid recursive calculations in real time, the app leverages pre-trained networks of class \pyvar{CaptorValueNet} (inheriting from \texttt{torch.nn.Module}).
+
+\subsection{Network Layout}
+The neural network layout consists of a Multi-Layer Perceptron (MLP) with the following structure:
+\begin{equation}
+\text{Input } (34) \;\xrightarrow{\text{Linear+Tanh}}\; 96 \;\xrightarrow{\text{Linear+Tanh}}\; 96 \;\xrightarrow{\text{Linear}}\; 1 \; (\text{Continuation Value})
+\end{equation}
+The input feature vector $X \in \mathbb{R}^{34}$ encodes:
+\begin{enumerate}
+    \item Belief state vector $\mu$ (4 dimensions: DC, PAR, ELN, FARC).
+    \item Normalized time index $\tau / T$ (1 dimension).
+    \item One-hot encoding of the captor type $\theta_K$ (4 dimensions).
+    \item Normalized ransom demand scale $R / 100$ (1 dimension).
+    \item Payback discount rates $\tilde{\beta}$ (4 dimensions).
+    \item One-hot encoding of region $z$ (5 dimensions).
+    \item One-hot encoding of family wealth class (2 dimensions).
+    \item One-hot encoding of victim profile (2 dimensions).
+    \item One-hot encoding of state type (2 dimensions).
+    \item Structural parameters: normalized $T_{\text{mad}} / 30$, $T_0 / 2.0$, $\eta_{\text{cal}} / 0.20$, $c_{\text{bar}} / 0.20$, and $H_{\text{ratio}}$ (5 dimensions).
+    \item Hazard variables: normalized $\lambda_4 / 0.01$, $\eta_1 / 3.0$, $\eta_2 / 3.0$, and $\beta_R / 10.0$ (4 dimensions).
+\end{enumerate}
+
+\subsection{Training Procedure}
+The value network is trained offline via backward induction from $\tau = 10 \to 1$:
+\begin{enumerate}
+    \item For each level $\tau$, $2,000$ state configurations $\mu$ and covariate sets are generated using Monte Carlo sampling.
+    \item The state's optimization problem is solved using the value net predicted for step $\tau+1$ (or a terminal condition of $V_{T_{\text{max}}+1} \equiv 0$).
+    \item The resulting Bellman value $V_\tau = \max\{U_{\text{rel}}, U_{\text{kill}}, V_{\text{cont}}\}$ is recorded as the regression target.
+    \item The network parameters are optimized to minimize the Mean Squared Error (MSE) using the Adam optimizer over 200 epochs per period.
+\end{enumerate}
+
+Two distinct network instances are trained:
+\begin{itemize}
+    \item \pyfile{captor\_value\_net\_T10.pt}: Approximates the belief-weighted expected continuation value used to solve the State's optimization problem.
+    \item \pyfile{captor\_true\_type\_value\_net\_T10.pt}: Approximates the true-type specific continuation value to evaluate the kidnapper's true response.
+\end{itemize}
+
+% =====================================================================
+\section{State Optimization Grid-Search Oracle}
+% =====================================================================
+
+In every period $\tau$, the state determines the optimal interdiction and pressure instruments $(\alpha_\tau^\ast, \gamma_\tau^\ast)$ that minimize social cost, subject to incentive and participation constraints. This is solved via a $101 \times 101$ grid search over $(\alpha, \gamma) \in [0,1]^2$.
+
+\subsection{Objective Functions}
+The state evaluates the objective function for each branch $b \in \{\text{Rescue}, \text{Negotiate}\}$:
+\begin{equation}
+\label{eq:state-objective}
+V_\tau^b(\mu_\tau) = \min_{(\alpha,\gamma) \in [0,1]^2}
+\left\{\sum_\theta \mu_\tau(\theta) L_\tau^b(\theta,\alpha,\gamma) + \Pi^S_b(\alpha,\gamma;\mu_\tau) -
+\psi_H \Delta H_\tau(\alpha,\gamma)\right\}
+\end{equation}
+where:
+\begin{enumerate}
+    \item $L_\tau^b(\theta,\alpha,\gamma)$ is the structural social loss of the branch:
+    \begin{align}
+    L_\tau^{\text{Rescue}}(\theta,\alpha,\gamma) &= \omega_k (1 - p_{\text{surv}}(\theta,\theta)) + C_{\text{ops}}(\gamma,\alpha;\theta) \\
+    L_\tau^{\text{Negotiate}}(\theta,\alpha,\gamma) &= \omega_p R (1 - \alpha) + \omega_k \bar{h}_2(\theta,\alpha,\gamma) + C_{\text{maint}}(\gamma,\alpha;\theta)
+    \end{align}
+    with $C_{\text{ops}}$ and $C_{\text{maint}}$ representing quadratic operational and maintenance costs.
+    \item $\Pi^S_b(\alpha,\gamma;\mu_\tau)$ is the quadratic anchoring penalty (deviation premium):
+    \begin{equation}
+    \Pi^S_b(\alpha,\gamma;\mu_\tau) = \chi_\alpha \left(\alpha - \alpha_b^\mu(\mu_\tau)\right)^2 + \chi_\gamma \left(\gamma - \gamma_b^\mu(\mu_\tau)\right)^2
+    \end{equation}
+    which penalizes deviations from the belief-weighted certainty benchmarks $\alpha_b^\mu(\mu_\tau) = \sum_\theta \mu_\tau(\theta) \alpha_b^{\theta,\ast}$ and $\gamma_b^\mu(\mu_\tau) = \sum_\theta \mu_\tau(\theta) \gamma_b^{\theta,\ast}$.
+    \item $-\psi_H \Delta H_\tau(\alpha,\gamma)$ is the active exploration subsidy, where $\Delta H_\tau$ is the expected reduction in prior entropy resulting from the Bayes update.
+\end{enumerate}
+
+\subsection{Constraints}
+The optimization is masked over the feasible grid space $\Gamma_\tau(\mu_\tau) = IC^K \wedge IR^K \wedge IR^F$:
+\begin{enumerate}
+    \item \textbf{Captor Incentive Compatibility ($IC^K$)}:
+    \begin{equation}
+    \min_{\theta_j} \sum_{\theta_i} \mu_\tau(\theta_i) \left[ U_b(\theta_i) - U_{b(\theta_j)}(\theta_i) \right] \ge 0
+    \end{equation}
+    \item \textbf{Captor Participation ($IR^K$)}:
+    \begin{equation}
+    \sum_\theta \mu_\tau(\theta) \left[ U_{\text{rel}}(\theta) - \max\{V_{\text{cont}}(\theta), U_{\text{kill}}(\theta)\} \right] \ge 0
+    \end{equation}
+    \item \textbf{Family Participation ($IR^F$)}:
+    \begin{equation}
+    U_{\text{coop}}(\theta_F) \ge U_{\text{col}}(\theta_F)
+    \end{equation}
+    with:
+    \begin{align}
+    U_{\text{coop}}(\theta_F) &= \mathbb{E}_\mu[p_{\text{surv}}] V^L_F - e_{\tau,F}(\gamma) \\
+    U_{\text{col}}(\theta_F) &= \mathbb{E}_\mu[p_{\text{rel}}] V^L_F - R - \mathbb{E}_\mu[p_{\text{det}}] F_{\text{col}}
+    \end{align}
+    where $V^L_F$ is the family's valuation of the victim's life ($V^L_F = 200.0$), $F_{\text{col}}$ is the legal penalty/fine for private collusion ($F_{\text{col}} = 20.0$), and $e_{\tau,F}(\gamma) = \Phi_F(\theta_F) e^{\kappa_F(\theta_F) \gamma} + \nu_F(\theta_F)$ represents the family's operational cost of cooperating with GAULA interdiction.
+\end{enumerate}
+
+% =====================================================================
+\section{Fallback Mechanism}
+% =====================================================================
+
+If no point on the $101 \times 101$ grid satisfies the constraints simultaneously ($\Gamma_\tau(\mu_\tau) = \emptyset$), the oracle implements a fallback protocol to prevent mathematical collapse:
+\begin{enumerate}
+    \item The constraints are temporarily bypassed.
+    \item The objective values $V_\tau^{\text{Rescue}}$ and $V_\tau^{\text{Negotiate}}$ are computed over the entire grid.
+    \item The branch that yields the lower unconstrained minimum is chosen, setting the controls $(\alpha_\tau^\ast, \gamma_\tau^\ast)$ to the argmin of that branch.
+    \item The oracle returns the flag \pyvar{feasible} set to \pyvar{False}, which is recorded in the output DataFrame for diagnostic tracking.
+\end{enumerate}
+
+% =====================================================================
+\section{Bayesian Simulation Loop and Table 5.2 Assembly}
+% =====================================================================
+
+Once initialized, the game runs period-by-period for $t = 1 \dots T_{\text{horizon}}$. In each step, the engine executes:
+\begin{enumerate}
+    \item \textbf{Maturity Filter}: Computes $M(t) = \min\{1, (t/T_{\text{mad}})^2\}$, scaling hazard rates.
+    \item \textbf{MDG Temperature}: Updates the temperature:
+    \[ T_t = T_0 \max\left\{ \left(\frac{H(\mu_t)}{H(\mu_0)}\right) e^{-\eta_{\text{cal}} t}, \underline{c} \right\} \]
+    \item \textbf{Policy Inference}: Evaluates the value network to solve the state's optimization problem via \pyvar{solve\_state\_problem}, yielding $(\alpha_t^\ast, \gamma_t^\ast)$.
+    \item \textbf{Intentions}: Finds the best responses $a_K^\ast$ (captor) and $a_F^\ast$ (family) given the policy.
+    \item \textbf{Frictional Draw (MDG)}: Samples executed actions $\tilde{a}_S, \tilde{a}_K, \tilde{a}_F$ via the logit frictional layer.
+    \item \textbf{Hazards and Absorption}: Computes Cox survival probabilities and draws whether the case continues or is absorbed (Rescue, Payment, Death, Escape, or Release).
+    \item \textbf{Bayesian Update}: Updates beliefs based on the observed outcome:
+    \begin{equation}
+    \mu_{t+1}(\theta) = \frac{\mu_t(\theta) \text{lik}_t(\theta)}{\sum_{\theta'} \mu_t(\theta') \text{lik}_t(\theta')}
+    \end{equation}
+\end{enumerate}
+
+The resulting log is formatted into a DataFrame, rounded to 3 decimal places, and transposed so that variables are rows and periods are columns. The final output displays the first 15 columns representing periods $t=0 \dots 14$.
+
+% =====================================================================
+\section{Calibrated Coefficients and Utility Parameters}
+% =====================================================================
+
+This section presents the exact numeric values of the structural calibration parameters and coefficients used in the hazard rates and utility functions across all perpetrator types (DC, PAR, ELN, FARC) and environments, as implemented in \texttt{app\_DL.py} and its backend libraries.
+
+\subsection{Hazard Rate Functional Forms and Coefficients}
+
+The effective hazard rates $\tilde{\lambda}_j(t \mid \mathcal{C}_t)$ for the three main outcome branches (Payment, Death, and Rescue, indexed by $j \in \{1, 2, 3\}$ respectively) are defined dynamically as:
+\begin{align}
+\tilde{\lambda}_1(t \mid \mathcal{C}_t) &= M(t) \lambda_{10} \exp\Bigl( \beta_{K,1}(\theta_K) + \beta_{z,1}(z) + \beta_{V,1}(\theta_V) + \beta_{S,1}(\theta_S) \nonumber \\
+&\quad + \phi_{F,1}(\tilde{a}_F) + \phi_{K,1}(\tilde{a}_K) - \zeta_{\alpha}(\theta_K) \alpha_t - \zeta_{\gamma}(\theta_K) \gamma_t - z_d p_{\text{det},t} \Bigr) \\
+\tilde{\lambda}_2(t \mid \mathcal{C}_t) &= M(t) \lambda_{20} \exp\Bigl( \beta_{K,2}(\theta_K) + \beta_{z,2}(z) + \beta_{S,2}(\theta_S) - \phi_{F,2}(\tilde{a}_F) \nonumber \\
+&\quad + \phi_{K,2}^{\text{kill}}(\tilde{a}_K) + \phi_{K,2}^{\text{cont}}(\tilde{a}_K) + \zeta_{\alpha}(\theta_K) \alpha_t + \zeta_{\gamma}(\theta_K) \gamma_t - z_d p_{\text{det},t} \Bigr) \\
+\tilde{\lambda}_3(t \mid \mathcal{C}_t) &= M(t) \lambda_{30} \exp\Bigl( -\beta_{S,3}(\theta_S) + \beta_{K,3}(\theta_K) + \beta_{z,3}(z) + \zeta_{\alpha}(\theta_K) \alpha_t \nonumber \\
+&\quad + \zeta_{\gamma}(\theta_K) \gamma_t + z_d p_{\text{det},t} + \zeta_{R,3}(\tilde{a}_S) - \phi_{F,3}(\tilde{a}_F) + \phi_{K,3}(\tilde{a}_K) \Bigr)
+\end{align}
+where:
+\begin{itemize}
+    \item $M(t) = \min\left\{1, \left(\frac{t}{T_{\text{mad}}}\right)^2\right\}$ where $T_{\text{mad}} = 5.0$ is the logistic maturation filter.
+    \item $\tilde{\lambda}_4(t) = \lambda_4 = 0.0005$ is the exogenous release hazard (constant).
+    \item $z_d = 0.18$ represents the sensitivity to the collusion detection probability.
+\end{itemize}
+
+The baseline hazard rates $\lambda_{j0}$ (scaling constants) are:
+$$\lambda_{10} = 0.012,\qquad \lambda_{20} = 0.002,\qquad \lambda_{30} = 0.008$$
+
+The action-contingent indicators $\phi$ represent shift parameters that activate under specific choices of family ($\tilde{a}_F \in \{\text{Pay}, \text{Refuse}\}$), captor ($\tilde{a}_K \in \{\text{Continue}, \text{Kill}, \text{Release}\}$), and state ($\tilde{a}_S \in \{\text{Rescue}, \text{Negotiate}\}$):
+\begin{itemize}
+    \item $\phi_{F,1} = 3.20$ if family pays ($\tilde{a}_F = \text{Pay}$), 0 otherwise.
+    \item $\phi_{K,1} = -1.15$ if captor continues ($\tilde{a}_K = \text{Continue}$), 0 otherwise.
+    \item $\phi_{F,2} = -1.50$ (so the term $-\phi_{F,2} = +1.50$ when family pays), 0 otherwise.
+    \item $\phi_{K,2}^{\text{kill}} = 4.00$ if captor kills ($\tilde{a}_K = \text{Kill}$), 0 otherwise.
+    \item $\phi_{K,2}^{\text{cont}} = 0.50$ if captor continues, 0 otherwise.
+    \item $\zeta_{R,3} = 2.50$ if state rescues ($\tilde{a}_S = \text{Rescue}$), 0 otherwise.
+    \item $\phi_{F,3} = -1.00$ (so $-\phi_{F,3} = +1.00$ when family pays), 0 otherwise.
+    \item $\phi_{K,3} = 0.50$ if captor continues, 0 otherwise.
+\end{itemize}
+
+The baseline covariate indicators represent environmental and capability factors:
+\begin{itemize}
+    \item $\beta_{V,1} = 1.36$ if victim is Public Sector, 0 otherwise.
+    \item $\beta_{F,1} = 0.80$ if wealth is High, 0 otherwise.
+    \item $\beta_{S,1} = \beta_{S,2} = \beta_{S,3} = 0.50$ if State Type is Lax, 0 otherwise.
+\end{itemize}
+
+Table~\ref{tab:hazard-betas} shows the perpetrator-specific hazard offsets $\beta_{K,j}$:
+\begin{table}[h!]
+\centering
+\caption{Captor-Type Specific Hazard Coefficients ($\beta_{K,j}$)}
+\label{tab:hazard-betas}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Perpetrator Group} & \textbf{Ransom ($\beta_{K,1}$)} & \textbf{Death ($\beta_{K,2}$)} & \textbf{Rescue ($\beta_{K,3}$)} \\
+\midrule
+\textbf{FARC} & $-0.70$ & $-0.85$ & $0.90$ \\
+\textbf{ELN} & $1.10$ & $0.20$ & $-0.65$ \\
+\textbf{PAR} & $-0.25$ & $1.35$ & $0.15$ \\
+\textbf{DC} & $1.55$ & $-0.40$ & $-0.95$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:geographic-betas} summarizes the geographic zone parameters $\beta_z$:
+\begin{table}[h!]
+\centering
+\caption{Geographic Zone Coefficients ($\beta_z$)}
+\label{tab:geographic-betas}
+\begin{tabular}{lc}
+\toprule
+\textbf{Geographic Zone ($z$)} & \textbf{Coefficient ($\beta_z$)} \\
+\midrule
+\textbf{Metropolis} & $0.00$ \\
+\textbf{Andean} & $-0.45$ \\
+\textbf{Caribbean} & $-0.70$ \\
+\textbf{Pacific / Red Zone} & $-0.20$ \\
+\textbf{Eastern Plains/Jungle} & $-0.32$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:policy-zetas} shows the sensitivity coefficients ($\zeta_{\alpha}, \zeta_{\gamma}$) that multiply the policies $(\alpha_t, \gamma_t)$:
+\begin{table}[h!]
+\centering
+\caption{Policy Sensitivity Coefficients ($\zeta_{\alpha}, \zeta_{\gamma}$)}
+\label{tab:policy-zetas}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Type ($\theta_K$)} & \textbf{Financial Blocking ($\zeta_{\alpha}$)} & \textbf{Operational Pressure ($\zeta_{\gamma}$)} \\
+\midrule
+\textbf{DC} & $0.2409$ & $0.5450$ \\
+\textbf{PAR} & $0.2183$ & $0.5848$ \\
+\textbf{ELN} & $0.2101$ & $0.5532$ \\
+\textbf{FARC} & $0.2087$ & $0.6197$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The collusion detection probability index parameters are $\eta_0$ (DC: $-1.5$, PAR: $-2.0$, ELN: $-2.5$, FARC: $-2.8$), $\eta_1 = 1.0$ and $\eta_2 = 1.0$ (used in $p_{\text{det},t} = [1 + \exp(-(\eta_0 + \eta_1 \alpha_t + \eta_2 \gamma_t))]^{-1}$). The rescue lethality indices are $\alpha_{\text{leth}}$ (DC: $-5.25$, PAR: $-5.15$, ELN: $-5.05$, FARC: $-4.95$) and $\beta_R = 7.0$ (used in $p_{\text{surv},t} = [1 + \exp(-(\alpha_{\text{leth}} + \beta_R \iota_t))]^{-1}$).
+
+\subsection{Utility and Payoff Function Parameters}
+
+\paragraph{State's Objective Function}
+The state chooses the action $a_\tau^S$ (Rescue or Negotiate) and the policy instruments $(\alpha_\tau, \gamma_\tau)$ to minimize the expected social loss:
+\begin{equation}
+V^S_{\tau}(a^S_\tau, \alpha_\tau, \gamma_\tau \mid \mu_\tau) = \sum_\theta \mu_\tau(\theta) L_\tau(a_\tau^S, \alpha_\tau, \gamma_\tau, \theta) + \Pi^S(\alpha_\tau, \gamma_\tau \mid \mu_\tau) - \psi_H \Delta H_\tau(\alpha_\tau, \gamma_\tau)
+\end{equation}
+where the branch-specific losses are:
+\begin{align}
+L_\tau^{\text{Rescue}}(\theta,\alpha,\gamma) &= \omega_k (1 - p_{\text{surv}}(\theta,\hat{\theta})) + C_{\text{ops}}(\gamma,\alpha) \\
+L_\tau^{\text{Negotiate}}(\theta,\alpha,\gamma) &= \omega_p R (1 - \alpha) + \omega_k \bar{h}_2(\theta,\alpha,\gamma) + C_{\text{maint}}(\gamma,\alpha)
+\end{align}
+with a baseline ransom amount $R = 100.0$.
+
+The policy deviation anchoring penalty is defined as:
+\begin{equation}
+\Pi^S(\alpha,\gamma \mid \mu_\tau) = \chi_\alpha \left(\alpha - \sum_\theta \mu_\tau(\theta) \alpha_b^{\theta,\ast}\right)^2 + \chi_\gamma \left(\gamma - \sum_\theta \mu_\tau(\theta) \gamma_b^{\theta,\ast}\right)^2
+\end{equation}
+with baseline target benchmarks $\alpha_b^{\theta,\ast} = 0.8$ and $\gamma_b^{\theta,\ast} = 0.6$. The information gain is $\Delta H_\tau(\alpha_\tau, \gamma_\tau) = H(\mu_\tau) - \mathbb{E}[H(\mu_{\tau+1}) \mid \alpha_\tau, \gamma_\tau]$.
+
+The state's weights for social loss are:
+\begin{itemize}
+    \item Ransom transfer weight: $\omega_p = 0.15$
+    \item Lethality / Loss of life weight: $\omega_k = 200.0$
+    \item Active learning entropy subsidy weight: $\psi_H = 25.0$
+    \item State policy deviation anchoring weights: $\chi_{\alpha} = 0.8$, $\chi_{\gamma} = 0.5$
+\end{itemize}
+
+Operational and maintenance costs are parameterized as:
+\begin{align}
+C_{\text{ops}}(\gamma, \alpha) &= c_0 + c_1 \gamma + \frac{1}{2} c_2 \gamma^2 + c_3 \alpha + \frac{1}{2} c_4 \alpha^2 + c_5 \gamma \alpha \\
+C_{\text{maint}}(\gamma, \alpha) &= m_0 + m_1 \gamma + \frac{1}{2} m_2 \gamma^2 + m_3 \alpha + \frac{1}{2} m_4 \alpha^2 + m_5 \gamma \alpha
+\end{align}
+with coefficients shown in Table~\ref{tab:state-cost-coefficients}:
+\begin{table}[h!]
+\centering
+\caption{State Cost Coefficients ($c_k$ and $m_k$)}
+\label{tab:state-cost-coefficients}
+\begin{tabular}{lccccccc}
+\toprule
+\textbf{Type} & \textbf{Cost Function} & $\bm{c_0, m_0}$ & $\bm{c_1, m_1}$ & $\bm{c_2, m_2}$ & $\bm{c_3, m_3}$ & $\bm{c_4, m_4}$ & $\bm{c_5, m_5}$ \\
+\midrule
+\textbf{DC} & $C_{\text{ops}}$ & $1.00$ & $-0.25$ & $1.00$ & $-0.20$ & $1.00$ & $0.10$ \\
+            & $C_{\text{maint}}$ & $3.00$ & $-6.00$ & $10.00$ & $-0.80$ & $6.00$ & $0.10$ \\
+\midrule
+\textbf{PAR} & $C_{\text{ops}}$ & $1.00$ & $-0.40$ & $1.00$ & $-0.35$ & $1.00$ & $0.10$ \\
+             & $C_{\text{maint}}$ & $3.00$ & $-6.50$ & $10.00$ & $-1.10$ & $6.00$ & $0.10$ \\
+\midrule
+\textbf{ELN} & $C_{\text{ops}}$ & $1.00$ & $-0.55$ & $1.00$ & $-0.50$ & $1.00$ & $0.10$ \\
+             & $C_{\text{maint}}$ & $3.00$ & $-7.00$ & $10.00$ & $-1.40$ & $6.00$ & $0.10$ \\
+\midrule
+\textbf{FARC} & $C_{\text{ops}}$ & $1.00$ & $-0.70$ & $1.00$ & $-0.65$ & $1.00$ & $0.10$ \\
+              & $C_{\text{maint}}$ & $3.00$ & $-7.50$ & $10.00$ & $-1.70$ & $6.00$ & $0.10$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Family's Payoff Function}
+The family decides between cooperating with the state ($a_F = \text{Cooperate}$) and colluding/paying ransom ($a_F = \text{Collude}$):
+\begin{align}
+U^F_{\text{coop},\tau}(\theta_F) &= \left(\sum_{\theta\in\Theta_K}\mu_\tau(\theta)\, p_{\text{surv},\tau}(\theta)\right) V_L - e_\tau(\gamma_\tau,\theta_F) \\
+U^F_{\text{col},\tau}(\theta_F) &= \left(\sum_{\theta\in\Theta_K}\mu_\tau(\theta)\, p_{\text{rel},\tau}(\theta)\right) V_L - R - p_{\text{det},\tau}\, F_{\text{col}}
+\end{align}
+where the valuation of the victim's life is $V_L = 200.0$, the legal penalty for private collusion is $F_{\text{col}} = 20.0$, and the family's institutional cost of cooperation is $e_\tau(\gamma_\tau) = \phi_F \exp(\kappa_F \gamma_\tau) + \nu_F$, where the coefficients $(\phi_F, \kappa_F, \nu_F)$ are:
+\begin{itemize}
+    \item \textbf{High wealth}: $\phi_F = 0.0600$, $\kappa_F = 3.6000$, $\nu_F = 0.0200$
+    \item \textbf{Low/Standard wealth}: $\phi_F = 0.0600$, $\kappa_F = 3.0000$, $\nu_F = 0.0200$
+\end{itemize}
+
+\paragraph{Captor's Payoff Function}
+The captor decides whether to release ($a_K = \text{Release}$), kill ($a_K = \text{Kill}$), or continue sustainment ($a_K = \text{Continue}$):
+\begin{equation}
+V^K_\tau(\theta_K) = \max\Big\{\, U^K_{\text{rel},\tau}(\theta_K),\;\; U^K_{\text{kill},\tau}(\theta_K,\theta_S),\;\; V^K_{\text{cont},\tau}(\theta_K) \,\Big\}
+\end{equation}
+where:
+\begin{align}
+U^K_{\text{rel}}(\theta_K) &= -\kappa_{\text{rel}}(\theta_K) \\
+U^K_{\text{kill}}(\theta_K,\theta_S) &= \big(1- p_{\text{cap},\tau}\big)\,\eta(\theta_K) - p_{\text{cap},\tau}\, F_{\text{cap}}(\theta_K,\theta_S) \\
+V^K_{\text{cont},\tau}(\theta_K) &= p_{\text{pay},\tau} R (1 - \alpha_\tau) - C_\tau(\gamma_\tau,\theta_K) - p_{\text{cap},\tau} F_{\text{cap}}(\theta_K,\theta_S) \nonumber \\
+&\quad + \tilde{\beta}(\theta_K) \big(1- p_{\text{cap},\tau}\big) \mathbb{E}\big[ V^K_{\tau+1}(\mu_{\tau+1}) \big]
+\end{align}
+
+The captor discount factor is set to $\tilde{\beta} = 0.92$ (default across all types). The baseline capture penalty under a Strict State is $F_{\text{cap}}$ (DC: $40.704$, PAR: $85.224$, ELN: $55.968$, FARC: $29.256$). The reputational kill utility is $\eta$ (DC: $-3.760$, PAR: $-14.740$, ELN: $-5.530$, FARC: $-2.970$). The release disutility is $\kappa_{\text{rel}}$ (DC: $2.367$, PAR: $14.273$, ELN: $4.163$, FARC: $1.471$). The captor operational cost function is $C_\tau(\gamma) = \phi_C \exp(\kappa_c \gamma) + \nu_C$, where the cost parameters $(\phi_C, \kappa_c, \nu_C)$ are shown in Table~\ref{tab:captor-cost-coefficients}:
+\begin{table}[h!]
+\centering
+\caption{Captor Cost Coefficients ($\phi_C, \kappa_c, \nu_C$)}
+\label{tab:captor-cost-coefficients}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Captor Group} & \textbf{Scale ($\phi_C$)} & \textbf{Curvature ($\kappa_c$)} & \textbf{Shift ($\nu_C$)} \\
+\midrule
+\textbf{DC} & $33.00$ & $2.61$ & $0.750$ \\
+\textbf{PAR} & $35.00$ & $2.63$ & $0.500$ \\
+\textbf{ELN} & $38.00$ & $2.70$ & $0.250$ \\
+\textbf{FARC} & $40.00$ & $2.70$ & $0.000$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}

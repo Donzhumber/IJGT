@@ -1,0 +1,71 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{amsmath,amssymb}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\begin{document}
+\singlespacing
+
+\begin{flushright}
+Prof. Humberto Bernal \\
+Universidad Colegio Mayor de Cundinamarca \\
+Ph.D. in Economics, Universidad de los Andes, Colombia \\
+E-mail: \href{mailto:hbernal@uniandes.edu.co}{hbernal@uniandes.edu.co}, \href{mailto:hbernalc@universidadmayor.edu.co}{hbernalc@universidadmayor.edu.co} \\
+ORCID: \href{https://orcid.org/0000-0002-4864-1726}{0000-0002-4864-1726} \\
+\today
+\end{flushright}
+
+\vspace{1.5em}
+
+\begin{flushleft}
+The Editorial Board \\
+\textit{International Journal of Game Theory}
+\end{flushleft}
+
+\vspace{1.5em}
+
+\noindent Dear Editors of the \textit{International Journal of Game Theory},
+
+\vspace{1.5em}
+
+\noindent It is a great privilege to submit the manuscript entitled \textbf{``Identifying Rational Types in Unknown Environments under an Indirect Dynamic Mechanism''} for consideration for publication in the \textit{International Journal of Game Theory}.
+
+This paper develops a novel dynamic mechanism design framework tailored to environments where information asymmetry and strategic secrecy are paramount. Specifically, the framework addresses the critical challenge of screening and type identification under incomplete information, utilizing the empirical context of kidnapping for ransom in Colombia. 
+
+The manuscript addresses a key gap in the dynamic mechanism design literature, which requires two structural extensions for its application to adversarial institutional settings: the guarantee of off-path robustness to preserve a well-defined Bayes' rule under unexpected equilibrium deviations, and the incorporation of active informational exploration (\textit{active learning}) to prevent myopic policy from freezing incentives and blocking type identification. By bridging the operational dynamics of player interaction with the Bayesian architecture of type identification required by an active planner, the paper makes three primary interconnected theoretical contributions:
+
+\begin{enumerate}
+    \item \textbf{An Indirect Dynamic Mechanism Design Framework:} While the Revelation Principle guarantees equivalence with a direct mechanism, this approach is not viable in adversarial environments where perpetrators have strong incentives to conceal or misreport their private types. Furthermore, direct revelation collapses observable policy instruments into abstract messages, losing their empirical anchoring. An indirect approach is developed where the state's continuous policy instruments, specifically financial interdiction ($\alpha$) and operational pressure ($\gamma$), remain empirically grounded.
+    
+    \item \textbf{Stochastic Implementation via the Mano de Dios-Guadalupe (MDG) Process:} To ensure the mathematical consistency of the Perfect Bayesian Equilibrium (PBE) off the equilibrium path, the MDG process endogenously models execution errors as logit noise under maximum entropy constraints. This implementation layer guarantees full support across all branches of the game, keeping the Bayesian operator well-defined off-path and allowing the PBE to discipline beliefs through sequential consistency.
+    
+    \item \textbf{The Identification Theorem for Rational Types:} The core theoretical contribution is the Identification Theorem for Rational Types in Unknown Environments. It proves that a sequence of recurrently separated observable signals (such as captivity duration and rescue outcomes governed by competing risks) converts Bayesian learning into posterior identification. Under consistent Bayesian updating in the prolonged-captivity event, the state's beliefs converge almost surely to the captor's true type.
+\end{enumerate}
+
+To ensure mathematical and logical consistency, the logical dependency graph, key algebraic steps, and asymptotic lemmas of the identification proofs have been formalized and verified using the \textbf{Lean 4 Interactive Theorem Prover}. On the empirical side, the model's structural parameters are calibrated using micro-level competing-hazards estimations of captivity duration from a unique database of kidnappings in Colombia. Additionally, an interactive Streamlit simulation portal is provided at \url{https://y5ss6jtuccvpbdvuy7kdgl.streamlit.app/} to showcase the deep-learning neural network approximations that resolve the backward induction computational costs. Furthermore, all replication codes, data files, and supplementary materials are hosted in the public GitHub repository: \url{https://github.com/Donzhumber/IJGT.git}, which includes a comprehensive README file detailing the contents of each directory.
+
+Given the distinguished history of the \textit{International Journal of Game Theory} in publishing pioneering research in game theory, mechanism design, and microeconomic theory, it is hoped that the manuscript will be found to be of strong interest to the journal's readership.
+
+The opportunity to have the manuscript reviewed by the editors is sincerely appreciated, and any feedback or guidance would be received with great gratitude.
+
+\vspace{2.5em}
+
+\begin{flushleft}
+Sincerely,
+
+\vspace{2.5em}
+
+\textbf{Prof. Humberto Bernal, Ph.D.} \\
+Universidad Colegio Mayor de Cundinamarca \\
+Ph.D. in Economics, Universidad de los Andes, Colombia
+\end{flushleft}
+
+\end{document}

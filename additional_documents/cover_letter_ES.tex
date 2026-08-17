@@ -1,0 +1,71 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{amsmath,amssymb}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\begin{document}
+\singlespacing
+
+\begin{flushright}
+Prof. Humberto Bernal \\
+Universidad Colegio Mayor de Cundinamarca \\
+Doctor en Economía, Universidad de los Andes, Colombia \\
+E-mail: \href{mailto:hbernal@uniandes.edu.co}{hbernal@uniandes.edu.co}, \href{mailto:hbernalc@universidadmayor.edu.co}{hbernalc@universidadmayor.edu.co} \\
+ORCID: \href{https://orcid.org/0000-0002-4864-1726}{0000-0002-4864-1726} \\
+\today
+\end{flushright}
+
+\vspace{1.5em}
+
+\begin{flushleft}
+El Comité Editorial \\
+\textit{International Journal of Game Theory}
+\end{flushleft}
+
+\vspace{1.5em}
+
+\noindent Estimados Editores del \textit{International Journal of Game Theory},
+
+\vspace{1.5em}
+
+\noindent Es un gran privilegio presentar el manuscrito titulado \textbf{``Identifying Rational Types in Unknown Environments under an Indirect Dynamic Mechanism''} para su consideración de publicación en el \textit{International Journal of Game Theory}.
+
+Este artículo desarrolla un nuevo marco de diseño de mecanismos dinámicos adaptado a entornos donde la asimetría de información y el secreto estratégico son de suma importancia. Específicamente, el marco aborda el desafío crítico de la detección y la identificación de tipos bajo información incompleta, utilizando el contexto empírico del secuestro extorsivo en Colombia.
+
+El manuscrito aborda una brecha clave en la literatura de diseño de mecanismos dinámicos, la cual requiere dos extensiones estructurales para su aplicación a entornos institucionales adversarios: la garantía de robustez fuera de la trayectoria para preservar una regla de Bayes bien definida ante desviaciones inesperadas del equilibrio, y la incorporación de exploración informativa activa (\textit{active learning}) para evitar que una política miope congele los incentivos y bloquee la identificación del tipo. Al tender un puente entre la dinámica operativa de la interacción de los jugadores con la arquitectura bayesiana de identificación de tipos requerida por un planificador activo, el artículo realiza tres contribuciones teóricas fundamentales e interconectadas:
+
+\begin{enumerate}
+    \item \textbf{Un Marco de Diseño de Mecanismos Dinámicos Indirectos:} Si bien el Principio de Revelación garantiza la equivalencia con un mecanismo directo, este enfoque no es viable en entornos adversarios donde los perpetradores tienen fuertes incentivos para ocultar o reportar falsamente sus tipos privados. Además, la revelación directa colapsa los instrumentos de política observables en mensajes abstractos, perdiendo su anclaje empírico. Se desarrolla un enfoque indirecto donde los instrumentos continuos de política del Estado, específicamente la interdicción financiera ($\alpha$) y la presión operativa ($\gamma$), permanecen empíricamente fundamentados.
+    
+    \item \textbf{Implementación Estocástica a través del Proceso Mano de Dios-Guadalupe (MDG):} Para asegurar la consistencia matemática del Equilibrio Bayesiano Perfecto (EBP) fuera de la trayectoria de equilibrio, el proceso MDG modela endógenamente los errores de ejecución como ruido logit bajo restricciones de entropía máxima. Esta capa de implementación garantiza soporte completo en todas las ramas del juego, manteniendo al operador bayesiano bien definido fuera de la trayectoria y permitiendo que el EBP discipline las creencias mediante consistencia secuencial.
+    
+    \item \textbf{El Teorema de Identificación para Tipos Racionales:} La contribución teórica central es el Teorema de Identificación para Tipos Racionales en Entornos Desconocidos. Demuestra que una secuencia de señales observables recurrentemente separadas (como la duración del cautiverio y los resultados de rescate gobernados por riesgos en competencia) convierte el aprendizaje bayesiano en identificación posterior. Bajo una actualización bayesiana consistente en el evento de cautiverio prolongado, las creencias del Estado convergen casi seguramente al verdadero tipo del captor.
+\end{enumerate}
+
+Para garantizar la consistencia matemática y lógica, el grafo de dependencias lógicas, los pasos algebraicos clave y los lemas asintóticos de las pruebas de identificación han sido formalizados y verificados utilizando el **Asistente de Pruebas Interactivo Lean 4**. En el aspecto empírico, los parámetros estructurales del modelo se calibran utilizando estimaciones de riesgos en competencia a nivel micro de la duración del cautiverio a partir de una base de datos única de secuestros en Colombia. Adicionalmente, se proporciona un portal de simulación interactivo en Streamlit disponible en \url{https://y5ss6jtuccvpbdvuy7kdgl.streamlit.app/} que muestra las aproximaciones de redes neuronales de aprendizaje profundo que resuelven los costos computacionales de la inducción hacia atrás. Asimismo, todos los códigos de replicación, archivos de datos y materiales complementarios se encuentran alojados en el repositorio público de GitHub: \url{https://github.com/Donzhumber/IJGT.git}, el cual incluye un archivo README detallado que describe el contenido de cada directorio.
+
+Dada la distinguida trayectoria del \textit{International Journal of Game Theory} en la publicación de investigaciones pioneras en teoría de juegos, diseño de mecanismos y teoría microeconómica, se espera que el manuscrito sea de gran interés para los lectores de la revista.
+
+Agradecemos sinceramente la oportunidad de que el manuscrito sea revisado por los editores, y cualquier comentario o guía será recibido con gran gratitud.
+
+\vspace{2.5em}
+
+\begin{flushleft}
+Atentamente,
+
+\vspace{2.5em}
+
+\textbf{Prof. Humberto Bernal, Ph.D.} \\
+Universidad Colegio Mayor de Cundinamarca \\
+Doctor en Economía, Universidad de los Andes, Colombia
+\end{flushleft}
+
+\end{document}

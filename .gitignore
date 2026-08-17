@@ -1,0 +1,26 @@
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.blg
+*.brf
+*.bbl
+*.spl
+missfont.log
+
+# Python virtual environments (never commit — regenerate from requirements.txt)
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Lean/Mathlib build cache and dependency sources (regenerate with `lake exe cache get`)
+.lake/
+lake-packages/
+
+# macOS / editor cruft
+.DS_Store
